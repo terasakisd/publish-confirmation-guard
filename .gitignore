@@ -1,0 +1,3 @@
+*.zip
+build/
+.DS_Store
