@@ -3,7 +3,7 @@
  * Plugin Name: Publish Confirmation Guard
  * Plugin URI: https://github.com/terasakisd/publish-confirmation-guard
  * Description: 下書きの記事を「公開」する時だけ、確認ポップアップ（はい/いいえ）を表示します。公開済み記事の「更新」、非公開への変更、非公開から公開への変更では表示されません。クラシックエディタ・ブロックエディタ（Gutenberg）・クイック編集・一括編集に対応。
- * Version: 1.3.0
+ * Version: 1.4.0
  * Author: Mikuru Terasaki
  * License: GPL-2.0-or-later
  * Requires at least: 5.8
@@ -16,7 +16,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 class Publish_Confirmation_Guard {
 
-	const VERSION     = '1.3.0';
+	const VERSION     = '1.4.0';
 	const GITHUB_REPO = 'terasakisd/publish-confirmation-guard';
 
 	public function __construct() {
@@ -127,7 +127,7 @@ class Publish_Confirmation_Guard {
 	'use strict';
 
 	var pendingAction = null;  // 「はい」を押したときに実行する処理
-	var passthrough   = false; // 確認済みの再クリックを素通しさせるフラグ
+	var confirmed     = false; // 「はい」で確認した後の再クリック連鎖を素通しさせるラッチ
 
 	/* 下書き扱いのステータス（これ→公開 のときだけ確認する） */
 	function isDraftStatus(status) {
@@ -191,20 +191,17 @@ class Publish_Confirmation_Guard {
 		e.stopPropagation();
 		e.stopImmediatePropagation();
 		openModal(function() {
-			passthrough = true;
+			confirmed = true;
 			btn.click();
 		});
 	}
 
 	document.addEventListener('click', function(e) {
-		if (passthrough) {
-			passthrough = false;
-			return;
-		}
-
-		// プログラムから発行されたクリック（自分の再クリック、他プラグインの再クリック等）は
-		// 横取りしない。他の確認系プラグインとの相互横取りによる無限ループを防ぐ。
-		if (!e.isTrusted) return;
+		// 「はい」で確認済みの後は、プログラム発行の再クリック連鎖（自分・他プラグイン）には
+		// 二度と割り込まない（ラッチ）。確認系プラグイン同士の相互横取りによるループを防ぐ。
+		// 未確認のうちは他プラグインの再クリックも確認対象にするため、確認が飛ばされることもない。
+		// ユーザーの実クリック（isTrusted）は常に通常どおり判定する。
+		if (confirmed && !e.isTrusted) return;
 
 		/* ---------- クラシックエディタの「公開」ボタン ---------- */
 		var classicBtn = e.target.closest('#publish');
